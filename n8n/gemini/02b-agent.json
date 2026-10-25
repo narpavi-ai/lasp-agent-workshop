@@ -1,0 +1,161 @@
+{
+  "name": "LASP Lab 2b · An agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "58a00de1-6c54-533e-845e-14a2889ed536",
+      "name": "When chat message received",
+      "webhookId": "e99e1e98-da7e-560d-a546-b6e7ffa8f32b"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a research assistant at the Laboratory for Advanced Separation Processes (LASP), University of Alberta, with the LASP Isotherm Fitter and IAST tools. Never estimate a number a tool can compute. Report the models you used and any workshop_validation warnings.",
+          "maxIterations": 12
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        260,
+        0
+      ],
+      "id": "5cc3ab80-239a-5618-bcd0-29d44a60592a",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        140,
+        240
+      ],
+      "id": "c4cf0004-93a0-5330-8131-bd9eda00ae57",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        300,
+        240
+      ],
+      "id": "375bfaec-e97a-56ac-9536-98ddd170d600",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://lasp-mcp-189650845754.northamerica-northeast1.run.app/mcp",
+        "serverTransport": "httpStreamable",
+        "authentication": "bearerAuth",
+        "include": "except",
+        "excludeTools": [
+          "plot_isotherm_fit",
+          "plot_iast"
+        ],
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.4,
+      "position": [
+        460,
+        240
+      ],
+      "id": "7f6157a3-a983-5755-8165-d3e2d9df281c",
+      "name": "LASP tools (MCP)",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "LASP MCP token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Lab 2b · An agent\n\nThe twin of the notebook's agent. **The model** decides the steps: the AI Agent loops model → tool → model until it answers.\n\n1. Click **Chat** and ask: *What tools do you have access to?* It reads them from the MCP server.\n2. Paste the Lab 1 question (in `n8n/questions.md`). Open the AI Agent's **Logs** to see each tool call.\n3. Follow up: *Does the choice of N2 model change the selectivity? Compare the top three.* The chain (2a) can't do this without new nodes.\n\n**Simple Memory** is what lets step 3 refer to step 2: without it, every message starts from nothing, like Lab 1. **LASP tools (MCP)** leaves out the two plot tools (images would reach the model as base64 text). **Max Iterations** (12) is the safety belt.",
+        "height": 340,
+        "width": 600
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -380
+      ],
+      "id": "5c40748d-b07f-5af1-b6c6-b60ffce41e99",
+      "name": "Note 02b 357"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LASP tools (MCP)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

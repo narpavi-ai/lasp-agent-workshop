@@ -1,0 +1,105 @@
+{
+  "name": "LASP Lab 1 · Ask the model",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "700667c9-92ef-5bf8-ba86-4b9053ddf1f8",
+      "name": "When chat message received",
+      "webhookId": "a56a9f87-650d-5142-83ae-f35159202d50"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        260,
+        0
+      ],
+      "id": "ee9d8007-f27f-5974-ba91-2d46ce34f714",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-haiku-5-5"
+        },
+        "options": {
+          "thinkingMode": "disabled",
+          "maxTokensToSample": 16000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        220,
+        220
+      ],
+      "id": "8cb6e46f-4e0a-5fc5-90b4-84625650de19",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Lab 1 · Ask the model\n\nThe twin of `01-plain-model.ipynb`. No tools.\n\nClick **Chat** and paste the question from `n8n/questions.md` (your data plus: *what is the IAST CO2/N2 selectivity at 15% CO2, 1 bar?*). Ask it twice.\n\nThe LASP engines give **S ≈ 388–420**, depending on which tied N2 model you pick. What did the model say, and where did its number come from? (In our test runs: 25.6, ≈ 115, ≈ 390, ≈ 480.)\n\n**Read answers in the Chat panel**, which renders them. The node's Output table shows the raw text, with `**` and `\\n`.",
+        "height": 330,
+        "width": 520
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -380
+      ],
+      "id": "9444ef86-2be3-5dd8-82f7-07a318b50c86",
+      "name": "Note 01 674"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

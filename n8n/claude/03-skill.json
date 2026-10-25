@@ -1,0 +1,168 @@
+{
+  "name": "LASP Lab 3 · A skill",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "20dc166b-efd0-57ac-9fc7-5cb3b5044417",
+      "name": "When chat message received",
+      "webhookId": "88c77007-e758-50ce-805f-3185b422207f"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a research assistant at the Laboratory for Advanced Separation Processes (LASP), University of Alberta, with the LASP Isotherm Fitter and IAST tools. Never estimate a number a tool can compute.\n\nFollow this procedure:\nScreen this adsorbent for CO2/N2 separation at y_CO2 = 0.15, P = 1 bar.\n\nCALL PLAN\n1. fit_isotherm once per gas (for a bundled dataset, get_sample_dataset first). Never refit data you\n   already fitted: the results are in your context.\n2. iast_binary once with your chosen pair, passing each fit's iast_handoff entry unchanged.\n3. Only if a choice below is tied: one more iast_binary per other tied model (at most 3 IAST calls in all),\n   to report the range.\n\nCHOOSING A FIT (the same rule for any data)\n- Use only fits that have an iast_handoff and whose workshop_validation status is not \"fail\".\n- Fits within 2 AICc units of the best usable one are tied. Among tied fits, choose the one with the fewest\n  parameters (n_params); if still tied, the higher-ranked one.\n\nANSWER IN EXACTLY THIS FORMAT\n| gas | model | n_params | AICc gap to the next usable fit | why |\n(one row per gas)\n**Selectivity S = <value>** at y_CO2 = 0.15, P = 1 bar (range <min>-<max> across tied fits, or \"no tie\")\nHenry selectivity: <value>\nWarnings: every warn/fail check, with its numbers, or \"none\"\nCaveat: one sentence; if IAST extrapolates beyond the fitted range, say the answer depends on the isotherm there.",
+          "maxIterations": 12
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        260,
+        0
+      ],
+      "id": "4ae97805-736c-5498-aeb9-ad363f12d544",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-haiku-5-5"
+        },
+        "options": {
+          "thinkingMode": "disabled",
+          "maxTokensToSample": 16000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        140,
+        240
+      ],
+      "id": "f946345e-bf29-5398-a39a-c144029770ac",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        300,
+        240
+      ],
+      "id": "2c3a52c6-d44e-5ff3-8c08-bd1e4ef94669",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://lasp-mcp-189650845754.northamerica-northeast1.run.app/mcp",
+        "serverTransport": "httpStreamable",
+        "authentication": "bearerAuth",
+        "include": "except",
+        "excludeTools": [
+          "plot_isotherm_fit",
+          "plot_iast"
+        ],
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.4,
+      "position": [
+        460,
+        240
+      ],
+      "id": "d485cd8d-3610-55fe-bc56-129ecd6cc99f",
+      "name": "LASP tools (MCP)",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "LASP MCP token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Lab 3 · A skill\n\nThe same agent, with the server's `adsorbent_screening` playbook added to its **system message**. In the notebook, the agent fetches it from the MCP server as a prompt; n8n's MCP nodes don't read prompts, so here it's pasted in (copied from the server's own text).\n\nClick **Chat** and ask: *Screen the bundled workshop_co2_298K_synthetic and workshop_n2_298K_synthetic datasets for CO2/N2 separation at 15% CO2 and 1 bar.* (The same data as Lab 2.) Then run the same question in Lab 2b and compare. The playbook has a **call plan**, a **rule for choosing** among tied fits (it picks Langmuir for N2, S ≈ 388, range 388–420) and an **output format**. In the Logs, count the tool calls. Is the answer in the format? Is the extrapolation warning there?",
+        "height": 340,
+        "width": 600
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -380
+      ],
+      "id": "ab7eede2-daba-5c2c-bf2c-b1652447b2d9",
+      "name": "Note 03 897"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LASP tools (MCP)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

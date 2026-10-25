@@ -1,0 +1,11 @@
+{
+  "_comment": "Shared by notebooks/build_notebooks.py and n8n/build_workflows.py. Edit here, then re-run both.",
+  "github_repo": "narpavi-ai/lasp-agent-workshop",
+  "models": {
+    "gemini": "gemini-3.5-flash-lite",
+    "claude": "claude-haiku-5-5"
+  },
+  "default_provider": "gemini",
+  "gemini_requests_per_minute": 12,
+  "mcp_url": "https://lasp-mcp-189650845754.northamerica-northeast1.run.app/mcp"
+}

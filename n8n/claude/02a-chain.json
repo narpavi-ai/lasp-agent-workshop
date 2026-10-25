@@ -1,0 +1,312 @@
+{
+  "name": "LASP Lab 2a · A chain",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "20d46fe1-1b27-55a7-b888-a132a6740755",
+      "name": "Run the chain"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The same synthetic 13X-like data as the notebooks (not measured), 298 K.\nreturn [{ json: {\n  pressure_bar: [0.001, 0.003, 0.01, 0.03, 0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2, 3, 5, 7, 10],\n  co2_mol_per_kg: [0.147171, 0.399272, 1.02996, 1.9223, 2.88179, 3.25169, 3.86714, 4.16431, 4.24648, 4.41152, 4.66168, 4.89841, 5.10685, 5.2541, 5.17341, 5.23311],\n  n2_mol_per_kg: [0.000319116, 0.000968288, 0.00320824, 0.00947269, 0.0311209, 0.0631523, 0.122319, 0.186175, 0.241094, 0.29566, 0.436553, 0.552997, 0.78373, 1.14108, 1.43167, 1.77024],\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "299cb0b5-2b70-56ea-89df-0e6608eb8062",
+      "name": "Workshop data"
+    },
+    {
+      "parameters": {
+        "serverTransport": "httpStreamable",
+        "endpointUrl": "https://lasp-mcp-189650845754.northamerica-northeast1.run.app/mcp",
+        "authentication": "bearerAuth",
+        "tool": {
+          "__rl": true,
+          "mode": "id",
+          "value": "fit_isotherm"
+        },
+        "inputMode": "json",
+        "jsonInput": "={{ { pressure: $('Workshop data').item.json.pressure_bar, loading: $('Workshop data').item.json.co2_mol_per_kg } }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        0
+      ],
+      "id": "4c13c846-f79f-5e3e-b9fa-e7c7de27e270",
+      "name": "Fit CO2",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "LASP MCP token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "serverTransport": "httpStreamable",
+        "endpointUrl": "https://lasp-mcp-189650845754.northamerica-northeast1.run.app/mcp",
+        "authentication": "bearerAuth",
+        "tool": {
+          "__rl": true,
+          "mode": "id",
+          "value": "fit_isotherm"
+        },
+        "inputMode": "json",
+        "jsonInput": "={{ { pressure: $('Workshop data').item.json.pressure_bar, loading: $('Workshop data').item.json.n2_mol_per_kg } }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        0
+      ],
+      "id": "a413a336-5370-5ad1-9fe1-441dfebd2e52",
+      "name": "Fit N2",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "LASP MCP token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// The fixed rule: each gas's highest-ranked fit that IAST can use.\nconst top = fit => fit.ranked.find(f => f.iast_handoff);\nconst co2 = top($('Fit CO2').first().json.content[0].text);\nconst n2 = top($('Fit N2').first().json.content[0].text);\nreturn [{ json: { co2_model: co2.model, n2_model: n2.model,\n  component1: co2.iast_handoff[0], component2: n2.iast_handoff[0] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "61565544-6e2c-577f-a163-8ef506a619d8",
+      "name": "Pick the top-ranked fits"
+    },
+    {
+      "parameters": {
+        "serverTransport": "httpStreamable",
+        "endpointUrl": "https://lasp-mcp-189650845754.northamerica-northeast1.run.app/mcp",
+        "authentication": "bearerAuth",
+        "tool": {
+          "__rl": true,
+          "mode": "id",
+          "value": "iast_binary"
+        },
+        "inputMode": "json",
+        "jsonInput": "={{ { component1: $('Pick the top-ranked fits').item.json.component1, component2: $('Pick the top-ranked fits').item.json.component2, total_pressure_bar: [1], y1: [0.15] } }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "483977fa-cfaf-578c-8e16-3274218ecc44",
+      "name": "IAST",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "LASP MCP token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "serverTransport": "httpStreamable",
+        "endpointUrl": "https://lasp-mcp-189650845754.northamerica-northeast1.run.app/mcp",
+        "authentication": "bearerAuth",
+        "tool": {
+          "__rl": true,
+          "mode": "id",
+          "value": "plot_iast"
+        },
+        "inputMode": "json",
+        "jsonInput": "={{ { component1: $('Pick the top-ranked fits').item.json.component1, component2: $('Pick the top-ranked fits').item.json.component2, panel: 'loadings_vs_P', y1: 0.15 } }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "23fbb3e9-0b2e-5966-82c0-c06b420d61f4",
+      "name": "Plot loadings vs P",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "LASP MCP token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Write a 3-sentence screening note for a research group from these LASP results: ' + JSON.stringify({ co2_model: $('Pick the top-ranked fits').item.json.co2_model, n2_model: $('Pick the top-ranked fits').item.json.n2_model, selectivity: $('IAST').item.json.content[0].text.points[0].selectivity_S12, henry_selectivity: $('IAST').item.json.content[0].text.henry_selectivity.value, warnings: $('IAST').item.json.content[0].text.points[0].workshop_validation.checks.filter(c => c.status !== 'pass') }) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1540,
+        0
+      ],
+      "id": "284b7cb8-5629-509c-a935-401cda5a2e88",
+      "name": "Write the note"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-haiku-5-5"
+        },
+        "options": {
+          "thinkingMode": "disabled",
+          "maxTokensToSample": 16000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        1500,
+        220
+      ],
+      "id": "a6041583-34c9-5835-884f-5a1e996c5fc5",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Lab 2a · A chain\n\nThe twin of the notebook's chain. **You** decide the steps: each node is one MCP tool call, in a fixed order. Click **Execute workflow**.\n\n- Click each node to see what the tool returned. **Plot loadings vs P** has the plot under *Binary*.\n- **Pick the top-ranked fits** applies a fixed rule. It picks Toth for N2 (S ≈ 414), but Toth, Quadratic and Langmuir are tied (S = 414, 420, 388). Nothing in the chain can notice that.\n- Only **Write the note** uses the model.",
+        "height": 330,
+        "width": 620
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        -380
+      ],
+      "id": "f9dd5a1a-76d6-5424-9d7d-4fe5df1a1ecf",
+      "name": "Note 02a 77"
+    }
+  ],
+  "connections": {
+    "Run the chain": {
+      "main": [
+        [
+          {
+            "node": "Workshop data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workshop data": {
+      "main": [
+        [
+          {
+            "node": "Fit CO2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit CO2": {
+      "main": [
+        [
+          {
+            "node": "Fit N2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit N2": {
+      "main": [
+        [
+          {
+            "node": "Pick the top-ranked fits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick the top-ranked fits": {
+      "main": [
+        [
+          {
+            "node": "IAST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IAST": {
+      "main": [
+        [
+          {
+            "node": "Plot loadings vs P",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plot loadings vs P": {
+      "main": [
+        [
+          {
+            "node": "Write the note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write the note",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -1,0 +1,267 @@
+{
+  "name": "LASP Lab 4 · Evaluation (LLM-as-judge)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4a86ed10-38bd-55be-b086-3148271fdd81",
+      "name": "Run the evaluation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The question, the solver's reference facts, and the criteria the judge scores against.\nreturn [{ json: {\n  \"task\": \"Screen the bundled workshop_co2_298K_synthetic and workshop_n2_298K_synthetic datasets for CO2/N2 separation at 15% CO2 and 1 bar.\",\n  \"reference\": \"Facts computed by LASP's solver for this question:\\n- CO2 is best fitted by dsl. For N2, toth, quad, langmuir fit about equally well.\\n- IAST selectivity at 1 bar and 15% CO2, by N2 model: toth 414, quad 420, langmuir 388.\\n- IAST needs the N2 isotherm at about 59 bar; N2 was fitted only up to 10 bar.\",\n  \"criteria\": {\n    \"selectivity\": \"Gives a selectivity within the reference values and says which isotherm models it used.\",\n    \"extrapolation\": \"Says IAST uses the N2 isotherm far beyond its fitted range, so the result is uncertain.\",\n    \"tied models\": \"Notes that several N2 models fit about equally well, and compares their selectivities or justifies the one it chose.\"\n  }\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "609d3ba0-7473-5420-a7a0-4fab2ad5cbd7",
+      "name": "Question and criteria"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.task }}",
+        "options": {
+          "systemMessage": "You are a research assistant at the Laboratory for Advanced Separation Processes (LASP), University of Alberta, with the LASP Isotherm Fitter and IAST tools. Never estimate a number a tool can compute.\n\nFollow this procedure:\nScreen this adsorbent for CO2/N2 separation at y_CO2 = 0.15, P = 1 bar.\n\nCALL PLAN\n1. fit_isotherm once per gas (for a bundled dataset, get_sample_dataset first). Never refit data you\n   already fitted: the results are in your context.\n2. iast_binary once with your chosen pair, passing each fit's iast_handoff entry unchanged.\n3. Only if a choice below is tied: one more iast_binary per other tied model (at most 3 IAST calls in all),\n   to report the range.\n\nCHOOSING A FIT (the same rule for any data)\n- Use only fits that have an iast_handoff and whose workshop_validation status is not \"fail\".\n- Fits within 2 AICc units of the best usable one are tied. Among tied fits, choose the one with the fewest\n  parameters (n_params); if still tied, the higher-ranked one.\n\nANSWER IN EXACTLY THIS FORMAT\n| gas | model | n_params | AICc gap to the next usable fit | why |\n(one row per gas)\n**Selectivity S = <value>** at y_CO2 = 0.15, P = 1 bar (range <min>-<max> across tied fits, or \"no tie\")\nHenry selectivity: <value>\nWarnings: every warn/fail check, with its numbers, or \"none\"\nCaveat: one sentence; if IAST extrapolates beyond the fitted range, say the answer depends on the isotherm there.",
+          "maxIterations": 12
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        460,
+        0
+      ],
+      "id": "f500ecaa-9373-519e-a521-42cfe62fd7b4",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        380,
+        240
+      ],
+      "id": "bf1dd115-c1e4-5158-9512-40a9d8b2d9ac",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://lasp-mcp-189650845754.northamerica-northeast1.run.app/mcp",
+        "serverTransport": "httpStreamable",
+        "authentication": "bearerAuth",
+        "include": "except",
+        "excludeTools": [
+          "plot_isotherm_fit",
+          "plot_iast"
+        ],
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.4,
+      "position": [
+        560,
+        240
+      ],
+      "id": "c8e3a2a5-f33d-5757-9a0d-4cdba5fe6b02",
+      "name": "LASP tools (MCP)",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "LASP MCP token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per criterion, each carrying the agent's answer, so the judge scores them one at a time.\nconst setup = $('Question and criteria').first().json;\nconst answer = $('AI Agent').first().json.output;\nreturn Object.entries(setup.criteria).map(([name, criterion]) =>\n  ({ json: { name, criterion, answer, reference: setup.reference } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        0
+      ],
+      "id": "48dbe1ec-c991-55f5-8f15-afad569f7e17",
+      "name": "One item per criterion"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ \"You are grading an AI research assistant's answer.\\n\\n\" + $json.reference + \"\\n\\nCriterion: \" + $json.criterion + \"\\n\\nAnswer to grade:\\n\" + $json.answer + \"\\n\\nScore from 0.0 (criterion not met) to 1.0 (fully met). Reply with JSON only: {\\\"score\\\": <number>, \\\"reason\\\": \\\"<one sentence>\\\"}\" }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        980,
+        0
+      ],
+      "id": "cbc89e28-5c83-521b-b937-94297c20428f",
+      "name": "LLM judge"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        240
+      ],
+      "id": "26c1df0e-9ddc-56a4-a567-3f099850e3e2",
+      "name": "Judge model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Read each verdict (tolerating text around the JSON) and build the scorecard.\nconst criteria = $('One item per criterion').all().map(i => i.json.name);\nconst rows = $input.all().map((item, i) => {\n  const text = String(item.json.text ?? '');\n  let score = 0, reason = 'unreadable verdict: ' + text.slice(0, 80);\n  try {\n    const v = JSON.parse(text.match(/\\{[\\s\\S]*\\}/)[0]);\n    score = Math.min(1, Math.max(0, Number(v.score) || 0));\n    reason = v.reason || '';\n  } catch (e) {}\n  return { criterion: criteria[i], score, reason };\n});\nconst average = rows.reduce((a, r) => a + r.score, 0) / rows.length;\nreturn [{ json: { average: Math.round(100 * average) / 100, rows } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "f2ea7fbf-aeb8-54d2-9c95-244be6bfc965",
+      "name": "Scorecard"
+    },
+    {
+      "parameters": {
+        "content": "## Lab 4 · Evaluation (LLM-as-judge)\n\nThe twin of `04-evaluation.ipynb`. The skilled agent answers Lab 3's question once; then a second model (**Judge model**) scores that answer on three criteria, using **reference facts from LASP's solver** (in **Question and criteria**).\n\nClick **Execute workflow**, then open **Scorecard**: a score and a reason per criterion.\n\n**Compare:** delete the procedure from the AI Agent's system message (the plain agent) and run it again. Did *extrapolation* and *tied models* drop? Then read the reasons: do you agree with the judge?",
+        "height": 340,
+        "width": 620
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -420
+      ],
+      "id": "bfe8bc7c-ccaa-5982-9617-045795bede3a",
+      "name": "Note 04 207"
+    }
+  ],
+  "connections": {
+    "Run the evaluation": {
+      "main": [
+        [
+          {
+            "node": "Question and criteria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Question and criteria": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "One item per criterion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One item per criterion": {
+      "main": [
+        [
+          {
+            "node": "LLM judge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM judge": {
+      "main": [
+        [
+          {
+            "node": "Scorecard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM judge",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LASP tools (MCP)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
