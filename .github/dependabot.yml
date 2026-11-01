@@ -1,0 +1,16 @@
+# Dependabot version updates for the notebook pins in notebooks/requirements.txt.
+# After merging a bump, run: python3 notebooks/build_notebooks.py
+# and re-test (notebooks/test_notebooks.py) so the Colab cells pick it up.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/notebooks"
+    schedule:
+      interval: "monthly"
+      timezone: "America/Edmonton"
+    cooldown:
+      default-days: 7
+    groups:
+      # LangChain packages move together; one PR to test before a class.
+      notebook-pins:
+        patterns: ["*"]

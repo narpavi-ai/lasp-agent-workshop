@@ -69,8 +69,22 @@ SCREEN = ("Screen the bundled workshop_co2_298K_synthetic and workshop_n2_298K_s
 # ---------------------------------------------------------------- setup cells
 
 # Exact versions, as tested. A release the night before can't break the class.
-PINS_MODEL = "langchain==1.4.7 langchain-core==1.7.0 langchain-google-genai==4.4.2 langchain-anthropic==1.7.6"
-PINS_AGENT = PINS_MODEL + " langgraph==1.2.17 langchain-mcp-adapters==0.3.2 mcp==1.30.0"
+# They live in requirements.txt so Dependabot can see them; "# model" and
+# "# agent" headings split the lab 1 set from the extra agent packages.
+def _read_pins():
+    groups, current = {}, None
+    for line in open(os.path.join(HERE, "requirements.txt")):
+        line = line.strip()
+        if line.startswith("# ") and line[2:] in ("model", "agent"):
+            current = groups.setdefault(line[2:], [])
+        elif line and not line.startswith("#"):
+            current.append(line)
+    return " ".join(groups["model"]), " ".join(groups["agent"])
+
+
+_MODEL, _AGENT = _read_pins()
+PINS_MODEL = _MODEL
+PINS_AGENT = PINS_MODEL + " " + _AGENT
 
 
 def install(pins):

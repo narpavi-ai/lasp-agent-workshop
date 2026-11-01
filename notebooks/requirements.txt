@@ -1,0 +1,14 @@
+# Exact versions the Colab labs install, as tested. build_notebooks.py reads this file.
+# Lab 1 installs the first block; labs 2-4 install both. Dependabot proposes bumps here;
+# rebuild the notebooks and re-run test_notebooks.py before merging one.
+
+# model
+langchain==1.4.7
+langchain-core==1.7.0
+langchain-google-genai==4.4.2
+langchain-anthropic==1.7.6
+
+# agent
+langgraph==1.2.17
+langchain-mcp-adapters==0.3.2
+mcp==1.30.0
