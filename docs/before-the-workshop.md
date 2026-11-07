@@ -1,5 +1,10 @@
 # Before the workshop
 
+> **The workshop server has been shut down (2026-11-06).** The workshop is over, and the LASP MCP
+> server these labs call is no longer running. Lab 1 (plain model) still works; labs 2–4 need the
+> server and will fail to connect. The materials are kept here for reference. If the workshop runs
+> again, the server URL in [`workshop.json`](../workshop.json) will be updated.
+
 About 5 minutes. Do it the day before, not weeks ahead.
 
 1. **Get a free Gemini API key.** Go to [Google AI Studio](https://aistudio.google.com/apikey),

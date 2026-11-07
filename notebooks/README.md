@@ -1,5 +1,10 @@
 # Colab track
 
+> **The workshop server has been shut down (2026-11-06).** The workshop is over, and the LASP MCP
+> server these labs call is no longer running. Lab 1 (plain model) still works; labs 2–4 need the
+> server and will fail to connect. The materials are kept here for reference. If the workshop runs
+> again, the server URL in [`workshop.json`](../workshop.json) will be updated.
+
 Python labs with LangGraph, calling the LASP MCP server.
 Open a notebook on GitHub and click **Open in Colab**. Setup is in
 [before the workshop](../docs/before-the-workshop.md).
